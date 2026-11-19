@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>Listas</title>
+    <meta name="description" content="Listas de compras, tarefas, desejos e lembretes em um só lugar." />
+
+    <!-- PWA: manifesto (nome, ícones, cores) e cor da barra do sistema nos dois temas -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#006a6a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b2627" media="(prefers-color-scheme: dark)" />
+
+    <!-- Ícones: aba do navegador e tela inicial do iPhone -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icones/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Listas" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
