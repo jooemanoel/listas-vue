@@ -17,7 +17,7 @@ Para testar sem credenciais do Firebase, rode a API com dados em memória:
 `cd ../listas-api && npm run dev:memoria`.
 
 O endereço da API publicada fica em [.env.production](.env.production)
-(`https://listas-api.vercel.app`); ajuste se o projeto na Vercel tiver outro nome.
+(`https://listas-api-plum.vercel.app`); ajuste se o projeto na Vercel tiver outro nome.
 
 ## Telas
 
