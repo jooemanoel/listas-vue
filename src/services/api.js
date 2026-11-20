@@ -12,6 +12,8 @@ export class ErroApi extends Error {
   }
 }
 
+const TEMPO_LIMITE = 15000; // ms
+
 /** Requisições em andamento: alimenta o indicador de carregamento da barra superior. */
 const pendentes = ref(0);
 export const ocupado = computed(() => pendentes.value > 0);
@@ -29,8 +31,12 @@ async function chamar(metodo, caminho, corpo) {
         method: metodo,
         headers,
         body: corpo === undefined ? undefined : JSON.stringify(corpo),
+        // Conexão ruim (ou servidor "acordando" demais) conta como sem conexão: o app
+        // segue no modo offline em vez de ficar esperando.
+        signal: AbortSignal.timeout(TEMPO_LIMITE),
       });
     } catch {
+      // status 0 = sem conexão: quem chamou decide se entra no modo offline.
       throw new ErroApi(0, "Sem conexão com o servidor. Verifique a internet.");
     }
 
@@ -55,12 +61,20 @@ export const cadastrar = (nome, senha) => chamar("POST", "/auth/cadastro", { nom
 
 export const buscarListas = () => chamar("GET", "/listas");
 export const buscarLista = (listaId) => chamar("GET", `/listas/${id(listaId)}`);
-export const criarLista = (nome) => chamar("POST", "/listas", { nome });
-export const excluirLista = (listaId) => chamar("DELETE", `/listas/${id(listaId)}`);
 
-export const adicionarItem = (listaId, nome) =>
-  chamar("POST", `/listas/${id(listaId)}/itens`, { nome });
-export const marcarItem = (listaId, itemId, marcado) =>
-  chamar("PATCH", `/listas/${id(listaId)}/itens/${id(itemId)}`, { marcado });
-export const removerItem = (listaId, itemId) =>
-  chamar("DELETE", `/listas/${id(listaId)}/itens/${id(itemId)}`);
+/**
+ * Envia a fila de alterações do aparelho (veja useListas.js). Só os campos que a API
+ * usa: o rótulo do histórico e a hora local ficam no aparelho.
+ */
+export const sincronizar = (operacoes) =>
+  chamar("POST", "/listas/sincronizar", {
+    operacoes: operacoes.map(({ id, tipo, listaId, base, itemId, nome, marcado }) => ({
+      id,
+      tipo,
+      listaId,
+      base,
+      itemId,
+      nome,
+      marcado,
+    })),
+  });

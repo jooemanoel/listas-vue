@@ -1,8 +1,8 @@
 // Service worker: permite instalar o app e abri-lo sem internet.
 //
-// Só arquivos do próprio app passam pelo cache. As respostas da API (listas do usuário,
-// com token) NUNCA são guardadas: num aparelho compartilhado, quem entrasse depois
-// poderia ver as listas de outra pessoa.
+// Só arquivos do próprio app passam por este cache. As respostas da API não passam
+// por aqui: a cópia das listas para o modo offline fica no localStorage, por usuário,
+// e é apagada ao sair (veja src/composables/useListas.js).
 //
 // Estratégias:
 //   - Navegação: REDE PRIMEIRO (com limite de 3 s), cache como reserva.
@@ -12,7 +12,7 @@
 //
 // Ao mudar este arquivo de forma relevante, troque a VERSAO: o cache antigo é apagado.
 
-const VERSAO = "listas-app-v1";
+const VERSAO = "listas-app-v2";
 
 const ARQUIVOS_INICIAIS = [
   "./",
@@ -24,9 +24,23 @@ const ARQUIVOS_INICIAIS = [
 ];
 
 self.addEventListener("install", (evento) => {
-  evento.waitUntil(caches.open(VERSAO).then((cache) => cache.addAll(ARQUIVOS_INICIAIS)));
+  evento.waitUntil(guardarApp());
   self.skipWaiting();
 });
+
+/**
+ * Guarda a página e também o JS e o CSS que ela usa (assets/index-<hash>.js...).
+ * Sem isso, na primeira visita esses arquivos só entrariam no cache numa próxima
+ * abertura, e o app aberto offline logo depois ficaria em branco.
+ */
+async function guardarApp() {
+  const cache = await caches.open(VERSAO);
+  await cache.addAll(ARQUIVOS_INICIAIS);
+  const pagina = await cache.match("./index.html");
+  const html = pagina ? await pagina.text() : "";
+  const arquivos = [...html.matchAll(/(?:src|href)="\.?\/?(assets\/[^"]+)"/g)].map((m) => "./" + m[1]);
+  if (arquivos.length) await cache.addAll(arquivos);
+}
 
 self.addEventListener("activate", (evento) => {
   evento.waitUntil(

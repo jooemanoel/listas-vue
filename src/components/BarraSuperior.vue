@@ -4,6 +4,9 @@
 import Icone from "./Icone.vue";
 import { ocupado } from "../services/api.js";
 import { rota, ir } from "../composables/useRota.js";
+import { useListas } from "../composables/useListas.js";
+
+const { conexao } = useListas();
 
 defineProps({
   titulo: { type: String, required: true },
@@ -15,6 +18,9 @@ defineEmits(["sair"]);
 <template>
   <header class="barra">
     <h1 class="titulo reticencias">{{ titulo }}</h1>
+    <span v-if="logado && conexao === 'offline'" class="chip-offline" title="Sem conexão: alterações guardadas neste aparelho">
+      Offline
+    </span>
 
     <span class="carregando" :class="{ visivel: ocupado }" role="status">
       <span v-if="ocupado" class="oculto">Carregando…</span>

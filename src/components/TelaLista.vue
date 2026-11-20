@@ -1,20 +1,21 @@
 <script setup>
 // Itens de uma lista: adicionar, marcar/desmarcar e remover.
+// Tudo responde na hora (também offline); o servidor recebe na sincronização.
 import { computed, nextTick, ref, watch } from "vue";
 import Icone from "./Icone.vue";
 import { ir } from "../composables/useRota.js";
 import { useListas } from "../composables/useListas.js";
-import { avisar, avisarErro } from "../composables/useAviso.js";
+import { avisar } from "../composables/useAviso.js";
+import { formatarData } from "../formatar.js";
 
 const props = defineProps({ id: { type: String, required: true } });
 const emit = defineEmits(["titulo"]);
 
-const { encontrar, abrir, adicionarItem, marcarItem, removerItem } = useListas();
+const { listas, encontrar, abrir, adicionarItem, marcarItem, removerItem, conexao } = useListas();
 
 const lista = computed(() => encontrar(props.id));
 const novo = ref("");
 const campo = ref(null);
-const enviando = ref(false);
 
 // Não marcados primeiro; marcados vão para o fim (ordem de inclusão mantida em cada grupo).
 const itens = computed(() => {
@@ -25,16 +26,16 @@ const totalMarcados = computed(() => itens.value.filter((i) => i.marcado).length
 
 watch(lista, (l) => emit("titulo", l?.nome ?? ""), { immediate: true });
 
-// Sempre busca a versão do servidor ao abrir (pode ter mudado em outro aparelho).
+// Ao abrir, busca a versão do servidor (pode ter mudado em outro aparelho).
+watch(() => props.id, (id) => abrir(id), { immediate: true });
+
+// Listas carregadas e esta não está entre elas: foi excluída (aqui ou em outro aparelho).
 watch(
-  () => props.id,
-  async (id) => {
-    try {
-      await abrir(id);
-    } catch (erro) {
-      if (erro.status === 404) avisar("Esta lista não existe mais.", "erro");
-      else avisarErro(erro);
-      if (erro.status !== 401) ir("/");
+  [listas, lista],
+  ([todas, atual]) => {
+    if (todas && !atual) {
+      avisar("Esta lista não existe mais.", "erro");
+      ir("/");
     }
   },
   { immediate: true }
@@ -42,23 +43,17 @@ watch(
 
 async function adicionar() {
   const nome = novo.value.trim();
-  if (!nome || enviando.value) return;
-  enviando.value = true;
-  try {
-    await adicionarItem(props.id, nome);
-    novo.value = "";
-  } catch (erro) {
-    avisarErro(erro);
-  } finally {
-    enviando.value = false;
-    await nextTick();
-    campo.value?.focus(); // pronto para digitar o próximo item
-  }
+  if (!nome) return;
+  if (adicionarItem(props.id, nome)) novo.value = "";
+  await nextTick();
+  campo.value?.focus(); // pronto para digitar o próximo item
 }
 </script>
 
 <template>
-  <p v-if="!lista" class="vazio">Carregando lista…</p>
+  <p v-if="!lista" class="vazio">
+    {{ conexao === "offline" ? "Lista não disponível offline neste aparelho." : "Carregando lista…" }}
+  </p>
 
   <template v-else>
     <form class="adicionar-item" @submit.prevent="adicionar">
@@ -73,10 +68,19 @@ async function adicionar() {
         autocapitalize="characters"
         enterkeyhint="done"
       />
-      <button type="submit" class="botao-icone destaque" aria-label="Adicionar item" :disabled="!novo.trim() || enviando">
+      <button type="submit" class="botao-icone destaque" aria-label="Adicionar item" :disabled="!novo.trim()">
         <Icone nome="adicionar" />
       </button>
     </form>
+
+    <!-- Contagem e o atualizadoEm da lista (no servidor, ou a hora da última alteração feita aqui). -->
+    <p class="resumo">
+      <template v-if="itens.length">{{ totalMarcados }} de {{ itens.length }} marcados · </template>
+      <template v-if="lista.pendente">
+        alterada {{ formatarData(lista.atualizadoEm) }} · <span class="pendente">não sincronizada</span>
+      </template>
+      <template v-else>atualizada {{ formatarData(lista.atualizadoEm) }}</template>
+    </p>
 
     <section v-if="!itens.length" class="cartao vazio">
       <Icone nome="logo" class="icone-grande" />
@@ -84,7 +88,6 @@ async function adicionar() {
     </section>
 
     <template v-else>
-      <p class="resumo">{{ totalMarcados }} de {{ itens.length }} marcados</p>
       <TransitionGroup tag="ul" name="item" class="linhas">
         <li v-for="item in itens" :key="item.id" class="linha" :class="{ feito: item.marcado }">
           <label class="linha-principal">
@@ -101,7 +104,7 @@ async function adicionar() {
             class="botao-icone"
             :aria-label="`Remover ${item.nome}`"
             title="Remover item"
-            @click="removerItem(id, item.id)"
+            @click="removerItem(id, item)"
           >
             <Icone nome="excluir" />
           </button>

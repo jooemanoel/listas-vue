@@ -5,20 +5,25 @@ import { ir } from "../composables/useRota.js";
 import { useListas } from "../composables/useListas.js";
 import { avisar } from "../composables/useAviso.js";
 
-const { listas, excluir } = useListas();
+const { listas, excluir, conexao } = useListas();
 
 const marcados = (lista) => lista.itens.filter((i) => i.marcado).length;
 
-async function confirmarExclusao(lista) {
+function confirmarExclusao(lista) {
   const total = lista.itens.length;
   const detalhe = total ? ` e seus ${total} ${total === 1 ? "item" : "itens"}` : "";
   if (!confirm(`Excluir a lista "${lista.nome}"${detalhe}?`)) return;
-  if (await excluir(lista.id)) avisar(`Lista "${lista.nome}" excluída.`);
+  excluir(lista.id);
+  avisar(`Lista "${lista.nome}" excluída.`);
 }
 </script>
 
 <template>
-  <p v-if="listas === null" class="vazio">Carregando listas…</p>
+  <p v-if="listas === null && conexao === 'offline'" class="vazio">
+    Sem conexão, e suas listas ainda não foram guardadas neste aparelho.
+    Conecte-se uma vez para usá-las offline.
+  </p>
+  <p v-else-if="listas === null" class="vazio">Carregando listas…</p>
 
   <section v-else-if="!listas.length" class="cartao vazio">
     <button class="botao-redondo" aria-label="Criar lista" @click="ir('/nova')">
@@ -36,6 +41,7 @@ async function confirmarExclusao(lista) {
       <li v-for="lista in listas" :key="lista.id" class="linha">
         <button class="linha-principal" @click="ir(`/lista/${encodeURIComponent(lista.id)}`)">
           <span class="reticencias">{{ lista.nome }}</span>
+          <span v-if="lista.pendente" class="pendente" title="Alterações ainda não sincronizadas">não sincronizada</span>
           <span class="contagem" :title="`${marcados(lista)} de ${lista.itens.length} marcados`">
             {{ marcados(lista) }}/{{ lista.itens.length }}
           </span>

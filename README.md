@@ -33,15 +33,42 @@ A barra superior tem três botões com ícones, no lugar do antigo menu lateral:
 - **Lista**: campo fixo no topo para adicionar (Enter adiciona e mantém o foco para o próximo item); marcar risca o item e o leva para o fim.
 - A navegação usa o `#` do endereço (`#/`, `#/nova`, `#/lista/<id>`): o botão voltar do Android funciona e recarregar a página mantém a tela.
 
+## Modo offline
+
+O app funciona sem internet depois de ter sido aberto (e as listas carregadas) uma vez online.
+
+- **Cópia no aparelho:** as listas, como o servidor as devolveu da última vez (cada uma com o
+  seu `atualizadoEm`), ficam no `localStorage`, separadas por usuário. Ao abrir o app, essa
+  cópia aparece na hora e depois é atualizada pelo servidor.
+- **Fila de alterações (histórico):** criar/excluir lista e adicionar/marcar/remover item
+  entram numa fila, com a hora da alteração e o `atualizadoEm` que o aparelho conhecia. A tela
+  mostra a cópia do servidor com a fila aplicada por cima, então tudo responde na hora.
+- **Online**, a fila é enviada logo em seguida (`POST /listas/sincronizar`).
+  **Sem conexão** (ou sem resposta em 15 s), o app entra no modo offline: chip *Offline* na
+  barra, cartão com o número de alterações guardadas, o histórico ("Ver alterações") e o aviso
+  para **não alterar as listas em outro aparelho até sincronizar**.
+- **Reconexão:** tenta de novo a cada 30 s, quando o navegador avisa que a rede voltou e ao
+  voltar para o app (ou no botão *Tentar agora*). A API compara o `atualizadoEm` do Firestore
+  com o da alteração; se a lista mudou em outro aparelho, as alterações daqui são aplicadas por
+  cima, item a item, e o app avisa para conferir.
+- **Data de atualização:** a tela da lista mostra quando ela foi atualizada no servidor, ou
+  "alterada … · não sincronizada" enquanto houver alterações só neste aparelho.
+- **Sair** apaga a cópia do aparelho (com confirmação se houver alterações não enviadas). Se a
+  sessão só expirar, a cópia fica guardada e sincroniza quando a pessoa entrar de novo.
+- As listas são de uso geral (compras, tarefas): por isso podem ficar guardadas no aparelho.
+  Não use o app para dados sensíveis.
+
 ## Estrutura
 
 ```
-public/sw.js                     service worker (cache só dos arquivos do app, nunca da API)
+public/sw.js                     service worker (cache dos arquivos do app, inclusive JS/CSS já na instalação; nunca da API)
 public/manifest.webmanifest      PWA
 scripts/gerar-icones.js          ícones a partir do Material Symbol "checklist"
 src/services/api.js              chamadas à listas-api (token no cabeçalho Authorization)
 src/composables/useSessao.js     token JWT e nome do usuário (localStorage)
-src/composables/useListas.js     estado das listas e ações (marcar/remover com resposta imediata)
+src/composables/useListas.js     listas, cópia no aparelho, fila de alterações e sincronização (modo offline)
+src/components/AvisoSincronizacao.vue  cartão do modo offline (pendências, histórico, alerta)
+src/formatar.js                  datas ("hoje às 14:32")
 src/composables/useRota.js       navegação por hash
 src/composables/useAviso.js      mensagens no rodapé
 src/components/                  barra superior, telas e ícones SVG
@@ -58,6 +85,6 @@ src/estilo.css                   todo o CSS (sem Bootstrap/Material); tema claro
 | Menu | hambúrguer com 3 opções | 3 botões de ícone na barra |
 | Itens | identificados pelo nome; a lista inteira era regravada a cada clique | `id` próprio; cada ação altera só o necessário |
 | Excluir lista | sem confirmação | pede confirmação |
-| JS + CSS | Angular + Material + Bootstrap + Firebase | 36 KB + 2 KB (gzip) |
+| JS + CSS | Angular + Material + Bootstrap + Firebase | 39 KB + 3 KB (gzip) |
 | Fontes externas | Roboto + Material Icons (Google Fonts) | nenhuma (fontes do sistema, ícones SVG) |
 | Ícone | genérico | Material Symbol `checklist` |
