@@ -6,7 +6,7 @@ import Icone from "./Icone.vue";
 import { ir } from "../composables/useRota.js";
 import { useListas } from "../composables/useListas.js";
 import { avisar } from "../composables/useAviso.js";
-import { formatarData } from "../formatar.js";
+import { formatarData, listaParaTexto } from "../formatar.js";
 
 const props = defineProps({ id: { type: String, required: true } });
 const emit = defineEmits(["titulo"]);
@@ -41,6 +41,26 @@ watch(
   { immediate: true }
 );
 
+async function copiar() {
+  const texto = listaParaTexto(lista.value.nome, itens.value);
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch {
+    // Sem a API de área de transferência (ex.: página fora de HTTPS): recurso antigo.
+    const area = document.createElement("textarea");
+    area.value = texto;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (!ok) return avisar("Não foi possível copiar a lista.", "erro");
+  }
+  avisar("Lista copiada. É só colar no WhatsApp.");
+}
+
 async function adicionar() {
   const nome = novo.value.trim();
   if (!nome) return;
@@ -74,13 +94,24 @@ async function adicionar() {
     </form>
 
     <!-- Contagem e o atualizadoEm da lista (no servidor, ou a hora da última alteração feita aqui). -->
-    <p class="resumo">
-      <template v-if="itens.length">{{ totalMarcados }} de {{ itens.length }} marcados · </template>
-      <template v-if="lista.pendente">
-        alterada {{ formatarData(lista.atualizadoEm) }} · <span class="pendente">não sincronizada</span>
-      </template>
-      <template v-else>atualizada {{ formatarData(lista.atualizadoEm) }}</template>
-    </p>
+    <div class="resumo">
+      <p>
+        <template v-if="itens.length">{{ totalMarcados }} de {{ itens.length }} marcados · </template>
+        <template v-if="lista.pendente">
+          alterada {{ formatarData(lista.atualizadoEm) }} · <span class="pendente">não sincronizada</span>
+        </template>
+        <template v-else>atualizada {{ formatarData(lista.atualizadoEm) }}</template>
+      </p>
+      <button
+        v-if="itens.length"
+        class="botao-icone"
+        title="Copiar lista"
+        aria-label="Copiar lista para colar no WhatsApp"
+        @click="copiar"
+      >
+        <Icone nome="copiar" />
+      </button>
+    </div>
 
     <section v-if="!itens.length" class="cartao vazio">
       <Icone nome="logo" class="icone-grande" />

@@ -14,3 +14,9 @@ export function formatarData(iso) {
     dias === 0 ? "hoje" : dias === 1 ? "ontem" : data.getFullYear() === new Date().getFullYear() ? diaMes.format(data) : diaMesAno.format(data);
   return `${dia} às ${hora.format(data)}`;
 }
+
+// Texto da lista para colar no WhatsApp: título em *negrito* e itens marcados ~riscados~.
+export function listaParaTexto(nome, itens) {
+  const linhas = itens.map((i) => (i.marcado ? `✅ ~${i.nome}~` : `⬜ ${i.nome}`));
+  return [`*${nome}*`, "", ...linhas].join("\n");
+}
