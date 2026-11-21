@@ -1,5 +1,5 @@
 {
-  "name": "listas-vue",
+  "name": "listas-web",
   "version": "2.0.0",
   "private": true,
   "description": "Listas de propósito geral (compras, tarefas, desejos), feita em Vue.js e instalável como PWA",
